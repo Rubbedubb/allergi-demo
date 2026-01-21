@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Allergikort</title>
+</head>
+<body>
+  <h1>Allergiinformation</h1>
+  <div id="out"></div>
+
+  <script>
+    const p = new URLSearchParams(location.search);
+
+    const allergies = [];
+    if (p.get("nuts") === "1") allergies.push("Nötter");
+    if (p.get("milk") === "1") allergies.push("Mjölk");
+    if (p.get("gluten") === "1") allergies.push("Gluten");
+
+    const note = (p.get("note") || "").trim();
+
+    const out = document.getElementById("out");
+    out.innerHTML = `
+      <p><strong>Allergier:</strong> ${allergies.length ? allergies.join(", ") : "Inga valda"}</p>
+      ${note ? `<p><strong>Extra:</strong> ${note}</p>` : ""}
+      <p style="margin-top:20px; opacity:0.7;">Demo – visa detta för personal.</p>
+    `;
+  </script>
+</body>
+</html>

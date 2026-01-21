@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Allergikort – Demo</title>
+</head>
+<body>
+  <h1>Skapa allergikort</h1>
+
+  <label><input type="checkbox" id="nuts"> Nötter</label><br>
+  <label><input type="checkbox" id="milk"> Mjölk</label><br>
+  <label><input type="checkbox" id="gluten"> Gluten</label><br><br>
+
+  <label>Extra info (valfritt):<br>
+    <input id="note" placeholder="t.ex. mycket känslig" />
+  </label><br><br>
+
+  <button id="make">Skapa QR-kod</button>
+
+  <h2>QR-kod</h2>
+  <div id="qrcode"></div>
+
+  <!-- QR-kod-bibliotek (en rad) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    $("make").addEventListener("click", () => {
+      const params = new URLSearchParams({
+        nuts: $("nuts").checked ? "1" : "0",
+        milk: $("milk").checked ? "1" : "0",
+        gluten: $("gluten").checked ? "1" : "0",
+        note: $("note").value.trim()
+      });
+
+      // Viktigt: QR-koden måste peka på en riktig adress.
+      // När ni hostar på GitHub Pages blir detta automatiskt rätt.
+      const url = `${location.origin}${location.pathname.replace("index.html","")}card.html?${params.toString()}`;
+
+      $("qrcode").innerHTML = "";
+      new QRCode($("qrcode"), {
+        text: url,
+        width: 220,
+        height: 220
+      });
+    });
+  </script>
+</body>
+</html>
