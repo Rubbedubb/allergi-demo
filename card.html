@@ -4,27 +4,138 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Allergikort</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
+    .card { border: 2px solid #111; border-radius: 16px; padding: 16px; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid #ccc; margin: 6px 0 12px; }
+    ul { margin: 10px 0 0; padding-left: 18px; }
+    li { margin: 8px 0; font-size: 18px; }
+    .sub { margin-top: 6px; padding-left: 14px; opacity: .9; font-size: 16px; }
+    .note { margin-top: 12px; padding: 10px; border-radius: 12px; border: 1px solid #ddd; background: #f7f7f7; }
+    .muted { margin-top: 12px; opacity: .75; font-size: 13px; line-height: 1.35; }
+    .btn { margin-top: 12px; padding: 10px 14px; border-radius: 12px; border: 1px solid #ccc; cursor: pointer; }
+  </style>
 </head>
 <body>
-  <h1>Allergiinformation</h1>
-  <div id="out"></div>
+  <div class="card">
+    <h1 id="title">Allergiinformation</h1>
+    <div class="pill" id="sensPill" style="display:none;"></div>
+
+    <div id="out"></div>
+
+    <button class="btn" onclick="window.print()">Skriv ut</button>
+
+    <div class="muted" id="disclaimer">
+      Demo. Informationen kommer från gästen. Kontrollera alltid ingredienser och risk för spår/korskontaminering.
+    </div>
+  </div>
 
   <script>
     const p = new URLSearchParams(location.search);
+    const lang = (p.get("lang") || "sv").toLowerCase();
+    const sens = (p.get("sens") || "normal").toLowerCase();
 
-    const allergies = [];
-    if (p.get("nuts") === "1") allergies.push("Nötter");
-    if (p.get("milk") === "1") allergies.push("Mjölk");
-    if (p.get("gluten") === "1") allergies.push("Gluten");
+    const T = {
+      sv: {
+        title: "Allergiinformation",
+        sensitivityHigh: "Mycket känslig",
+        sensitivityNormal: "Normal känslighet",
+        allergens: "Allergener",
+        none: "Inga allergener valda",
+        extra: "Extra info",
+        nuts: "Nötter",
+        demo: "Demo. Informationen kommer från gästen. Kontrollera alltid ingredienser och risk för spår/korskontaminering."
+      },
+      en: {
+        title: "Allergy information",
+        sensitivityHigh: "Highly sensitive",
+        sensitivityNormal: "Normal sensitivity",
+        allergens: "Allergens",
+        none: "No allergens selected",
+        extra: "Extra note",
+        nuts: "Tree nuts",
+        demo: "Demo. Information provided by the guest. Always verify ingredients and cross-contact risk."
+      }
+    }[lang] || T?.sv;
 
-    const note = (p.get("note") || "").trim();
+    document.documentElement.lang = lang === "en" ? "en" : "sv";
+    document.getElementById("title").textContent = T.title;
+    document.getElementById("disclaimer").textContent = T.demo;
+
+    // Vanliga allergener
+    const labels = {
+      gluten: { sv: "Gluten", en: "Gluten" },
+      milk: { sv: "Mjölk", en: "Milk" },
+      egg: { sv: "Ägg", en: "Egg" },
+      soy: { sv: "Soja", en: "Soy" },
+      sesame: { sv: "Sesam", en: "Sesame" },
+      peanut: { sv: "Jordnöt", en: "Peanut" },
+      fish: { sv: "Fisk", en: "Fish" },
+      shellfish: { sv: "Skaldjur", en: "Shellfish" }
+    };
 
     const out = document.getElementById("out");
-    out.innerHTML = `
-      <p><strong>Allergier:</strong> ${allergies.length ? allergies.join(", ") : "Inga valda"}</p>
-      ${note ? `<p><strong>Extra:</strong> ${note}</p>` : ""}
-      <p style="margin-top:20px; opacity:0.7;">Demo – visa detta för personal.</p>
-    `;
+    const items = [];
+
+    for (const key of Object.keys(labels)) {
+      if (p.get(key) === "1") {
+        items.push(lang === "en" ? labels[key].en : labels[key].sv);
+      }
+    }
+
+    // Nötter: underkategorier
+    const nutNames = {
+      cashew: { sv: "Cashewnöt", en: "Cashew" },
+      walnut: { sv: "Valnöt", en: "Walnut" },
+      pinenut: { sv: "Pinjenöt", en: "Pine nut" },
+      almond: { sv: "Mandel", en: "Almond" },
+      hazelnut: { sv: "Hasselnöt", en: "Hazelnut" },
+      pistachio: { sv: "Pistagenöt", en: "Pistachio" },
+      pecan: { sv: "Pekannöt", en: "Pecan" },
+      macadamia: { sv: "Macadamianöt", en: "Macadamia" },
+      brazil: { sv: "Paranöt", en: "Brazil nut" }
+    };
+
+    const nutsRaw = (p.get("nuts") || "").split(",").map(s => s.trim()).filter(Boolean);
+    const nutsPretty = nutsRaw
+      .map(code => nutNames[code])
+      .filter(Boolean)
+      .map(obj => (lang === "en" ? obj.en : obj.sv));
+
+    // Känslighet
+    const sensPill = document.getElementById("sensPill");
+    sensPill.style.display = "inline-block";
+    sensPill.textContent = (sens === "high") ? T.sensitivityHigh : T.sensitivityNormal;
+
+    // Bygg UI rad-för-rad
+    let html = `<div><strong>${T.allergens}:</strong></div>`;
+
+    if (items.length === 0 && nutsPretty.length === 0) {
+      html += `<div style="margin-top:8px;">${T.none}</div>`;
+    } else {
+      html += `<ul>`;
+      for (const it of items) {
+        html += `<li>${it}</li>`;
+      }
+      if (nutsPretty.length) {
+        html += `<li><strong>${T.nuts}</strong><div class="sub">• ${nutsPretty.join("<br>• ")}</div></li>`;
+      }
+      html += `</ul>`;
+    }
+
+    const note = (p.get("note") || "").trim();
+    if (note) {
+      html += `<div class="note"><strong>${T.extra}:</strong><br>${escapeHtml(note)}</div>`;
+    }
+
+    out.innerHTML = html;
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, (m) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
+      }[m]));
+    }
   </script>
 </body>
 </html>
