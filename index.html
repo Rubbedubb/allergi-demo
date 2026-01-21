@@ -4,46 +4,149 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Allergikort – Demo</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
+    h1 { margin: 0 0 12px; }
+    fieldset { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin: 12px 0; }
+    legend { padding: 0 8px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    label { display: inline-flex; align-items: center; gap: 8px; margin: 6px 10px 6px 0; }
+    input[type="text"] { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccc; }
+    select { padding: 8px; border-radius: 10px; border: 1px solid #ccc; }
+    button { padding: 10px 14px; border-radius: 12px; border: 1px solid #ccc; cursor: pointer; }
+    #qrcode { margin-top: 10px; }
+    .muted { opacity: .75; }
+    .linkbox { word-break: break-all; background: #f6f6f6; padding: 10px; border-radius: 12px; border: 1px solid #eee; }
+  </style>
 </head>
 <body>
-  <h1>Skapa allergikort</h1>
+  <h1>Skapa allergikort (demo)</h1>
+  <p class="muted">Välj allergener och skapa en QR-kod som personal kan skanna.</p>
 
-  <label><input type="checkbox" id="nuts"> Nötter</label><br>
-  <label><input type="checkbox" id="milk"> Mjölk</label><br>
-  <label><input type="checkbox" id="gluten"> Gluten</label><br><br>
+  <div class="row">
+    <label>Språk:
+      <select id="lang">
+        <option value="sv" selected>Svenska</option>
+        <option value="en">English</option>
+      </select>
+    </label>
 
-  <label>Extra info (valfritt):<br>
-    <input id="note" placeholder="t.ex. mycket känslig" />
-  </label><br><br>
+    <label>Känslighet:
+      <select id="sensitivity">
+        <option value="normal" selected>Normal</option>
+        <option value="high">Mycket känslig</option>
+      </select>
+    </label>
+  </div>
 
-  <button id="make">Skapa QR-kod</button>
+  <fieldset>
+    <legend>Vanliga allergener</legend>
 
-  <h2>QR-kod</h2>
+    <label><input type="checkbox" id="gluten"> Gluten</label>
+    <label><input type="checkbox" id="milk"> Mjölk</label>
+    <label><input type="checkbox" id="egg"> Ägg</label>
+    <label><input type="checkbox" id="soy"> Soja</label>
+    <label><input type="checkbox" id="sesame"> Sesam</label>
+    <label><input type="checkbox" id="peanut"> Jordnöt</label>
+    <label><input type="checkbox" id="fish"> Fisk</label>
+    <label><input type="checkbox" id="shellfish"> Skaldjur</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Nötter (välj de som gäller)</legend>
+    <label><input type="checkbox" id="nut_cashew"> Cashewnöt</label>
+    <label><input type="checkbox" id="nut_walnut"> Valnöt</label>
+    <label><input type="checkbox" id="nut_pinenut"> Pinjenöt</label>
+    <label><input type="checkbox" id="nut_almond"> Mandel</label>
+    <label><input type="checkbox" id="nut_hazelnut"> Hasselnöt</label>
+    <label><input type="checkbox" id="nut_pistachio"> Pistagenöt</label>
+    <label><input type="checkbox" id="nut_pecan"> Pekannöt</label>
+    <label><input type="checkbox" id="nut_macadamia"> Macadamianöt</label>
+    <label><input type="checkbox" id="nut_brazil"> Paranöt</label>
+  </fieldset>
+
+  <label>Extra info (valfritt):</label>
+  <input id="note" placeholder="t.ex. 'behöver rena redskap' eller 'spår kan vara farligt'" />
+
+  <div class="row" style="margin-top: 12px;">
+    <button id="make">Skapa QR-kod</button>
+    <button id="copy" disabled>Kopiera länk</button>
+  </div>
+
+  <h2 style="margin-top:18px;">QR-kod</h2>
   <div id="qrcode"></div>
 
-  <!-- QR-kod-bibliotek (en rad) -->
+  <h3>Länk (för test)</h3>
+  <div class="linkbox" id="linkbox">Skapa QR-kod för att få en länk…</div>
+
+  <!-- QR-bibliotek -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
 
-    $("make").addEventListener("click", () => {
-      const params = new URLSearchParams({
-        nuts: $("nuts").checked ? "1" : "0",
-        milk: $("milk").checked ? "1" : "0",
-        gluten: $("gluten").checked ? "1" : "0",
-        note: $("note").value.trim()
-      });
+    function baseUrlForCard() {
+      // Robust bas-URL: funkar både med / och /index.html
+      const noQuery = location.href.split("?")[0];
+      let base = noQuery;
+      if (base.endsWith("index.html")) base = base.slice(0, -("index.html".length));
+      if (!base.endsWith("/")) base += "/";
+      return base + "card.html";
+    }
 
-      // Viktigt: QR-koden måste peka på en riktig adress.
-      // När ni hostar på GitHub Pages blir detta automatiskt rätt.
-      const url = `${location.origin}${location.pathname.replace("index.html","")}card.html?${params.toString()}`;
+    function buildUrl() {
+      const params = new URLSearchParams();
+      params.set("lang", $("lang").value);
+      params.set("sens", $("sensitivity").value);
+
+      // Vanliga allergener
+      const simple = ["gluten","milk","egg","soy","sesame","peanut","fish","shellfish"];
+      for (const key of simple) {
+        params.set(key, $(key).checked ? "1" : "0");
+      }
+
+      // Nötter (undertyper)
+      const nutMap = {
+        nut_cashew: "cashew",
+        nut_walnut: "walnut",
+        nut_pinenut: "pinenut",
+        nut_almond: "almond",
+        nut_hazelnut: "hazelnut",
+        nut_pistachio: "pistachio",
+        nut_pecan: "pecan",
+        nut_macadamia: "macadamia",
+        nut_brazil: "brazil"
+      };
+
+      const chosenNuts = [];
+      for (const [id, code] of Object.entries(nutMap)) {
+        if ($(id).checked) chosenNuts.push(code);
+      }
+      params.set("nuts", chosenNuts.join(",")); // ex: "cashew,walnut"
+
+      const note = $("note").value.trim();
+      if (note) params.set("note", note);
+
+      return `${baseUrlForCard()}?${params.toString()}`;
+    }
+
+    $("make").addEventListener("click", () => {
+      const url = buildUrl();
 
       $("qrcode").innerHTML = "";
-      new QRCode($("qrcode"), {
-        text: url,
-        width: 220,
-        height: 220
-      });
+      new QRCode($("qrcode"), { text: url, width: 220, height: 220 });
+
+      $("linkbox").textContent = url;
+      $("copy").disabled = false;
+
+      $("copy").onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(url);
+          $("copy").textContent = "Kopierad!";
+          setTimeout(() => $("copy").textContent = "Kopiera länk", 1200);
+        } catch {
+          alert("Kunde inte kopiera automatiskt. Markera länken och kopiera manuellt.");
+        }
+      };
     });
   </script>
 </body>
